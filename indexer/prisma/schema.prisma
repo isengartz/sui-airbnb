@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Property {
+  id           String    @id
+  owner        String
+  pricePerDay  Int
+  propertyType Int
+  description  String
+  numRooms     Int
+  address      String
+  isAvailable  Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[]
+}
+
+model Booking {
+  id           String   @id
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id])
+  guest        String
+  checkInDate  DateTime
+  checkOutDate DateTime
+  totalPrice   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

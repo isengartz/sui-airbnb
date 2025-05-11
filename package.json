@@ -1,0 +1,11 @@
+{
+  "name": "sui-airbnb",
+  "version": "1.0.0",
+  "description": "A simple Airbnb clone on the SUI blockchain for learning Web3 development.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

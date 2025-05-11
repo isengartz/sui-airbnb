@@ -1,0 +1,68 @@
+services:
+  # Database for off-chain storage
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sui_airbnb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # SUI local network for development
+  sui-local:
+    image: mysten/sui-node:devnet
+    ports:
+      - "9000:9000"  # RPC
+    environment:
+      - RUST_LOG=info
+    # Simple command to keep the container running
+    command: ["sh", "-c", "echo 'SUI node running in background' && sleep infinity"]
+    volumes:
+      - sui_data:/sui-node/db
+
+  # Indexer service with TypeScript support
+  indexer:
+    build:
+      context: ./indexer
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./indexer:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sui_airbnb?schema=public
+      - SUI_RPC_URL=http://sui-local:9000
+      - NODE_ENV=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_SUI_RPC_URL=http://localhost:9000
+      - REACT_APP_API_URL=http://localhost:4000
+    depends_on:
+      - indexer
+
+volumes:
+  postgres_data:
+  sui_data:

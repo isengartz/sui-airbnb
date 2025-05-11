@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package.json package-lock.json* ./
+
+RUN npm ci
+
+# Copy the rest of the code
+COPY . .
+
+# Expose the port the app will run on
+EXPOSE 5173
+
+# Start the application in development mode
+CMD ["npm", "start"]
