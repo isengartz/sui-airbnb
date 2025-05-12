@@ -15,10 +15,10 @@ module sui_airbnb::property_tests {
         {
             property::create_property(
                 100, // price_per_day
-                0,   // ROOM type
-                b"Cozy room in downtown",
+                property::room(),   // ROOM type
+                b"Cozy room in downtown".to_string(),
                 1,   // num_rooms
-                b"123 Main St, City",
+                b"123 Main St, City".to_string(),
                 test_scenario::ctx(scenario)
             );
         };
@@ -28,10 +28,12 @@ module sui_airbnb::property_tests {
         {
             let property = test_scenario::take_from_sender<Property>(scenario);
             assert!(property::get_price_per_day(&property) == 100, 0);
-            assert!(property::get_property_type(&property) == 0, 1);
+            assert!(property::get_property_type(&property) == property::room(), 1);
             assert!(property::get_num_rooms(&property) == 1, 2);
             test_scenario::return_to_sender(scenario, property);
         };
+
+        // TODO : Add event tests
         
         test_scenario::end(scenario_val);
     }

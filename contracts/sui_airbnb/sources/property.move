@@ -1,22 +1,40 @@
 module sui_airbnb::property {
 
-    // Property types
-    const ROOM: u8 = 0;
-    const APARTMENT: u8 = 1;
-    const HOUSE: u8 = 2;
-    
-    // Error codes
-    const EInvalidPropertyType: u64 = 1;
-    
+use std::string::String;
+use sui::event;
+
+    public enum PropertyType has copy, drop, store {
+        ROOM,
+        APARTMENT,
+        HOUSE,
+    }
+
+    public fun room() : PropertyType {
+        PropertyType::ROOM
+    }
+
+    public fun apartment() : PropertyType {
+        PropertyType::APARTMENT
+    }
+
+    public fun house() : PropertyType {
+        PropertyType::HOUSE
+    }
+
+    public struct SuiAirbnbAdmin has key {
+        id: UID,
+    }
+
+        
     // Property struct
     public struct Property has key, store {
         id: UID,
         owner: address,
         price_per_day: u64,
-        property_type: u8,
-        description: vector<u8>,
+        property_type: PropertyType,
+        description: String,
         num_rooms: u64,
-        address: vector<u8>,
+        address: String,
         is_available: bool,
     }
     
@@ -29,13 +47,31 @@ module sui_airbnb::property {
         check_out_date: u64,
         total_price: u64,
     }
-    
-    // Getter functions
+
+    // Events
+    public struct PropertyCreated has copy, drop {
+        property_id: ID,
+        owner: address,
+        price_per_day: u64,
+        property_type: PropertyType,
+        num_rooms: u64,
+    }
+
+
+    // Functions
+
+    fun init(ctx: &mut TxContext) {
+        let admin = SuiAirbnbAdmin {
+            id: object::new(ctx),
+        };
+        transfer::transfer(admin, tx_context::sender(ctx));
+    }
+
     public fun get_price_per_day(property: &Property): u64 {
         property.price_per_day
     }
 
-    public fun get_property_type(property: &Property): u8 {
+    public fun get_property_type(property: &Property): PropertyType {
         property.property_type
     }
 
@@ -44,16 +80,16 @@ module sui_airbnb::property {
     }
     
     // Create a new property listing
-    public entry fun create_property(
+    #[allow(lint(self_transfer))]
+    public fun create_property(
         price_per_day: u64,
-        property_type: u8,
-        description: vector<u8>,
+        property_type: PropertyType,
+        description: String,
         num_rooms: u64,
-        address: vector<u8>,
+        address: String,
         ctx: &mut TxContext
     ) {
-        // Validate property type
-        assert!(property_type <= HOUSE, EInvalidPropertyType);
+
         
         let property = Property {
             id: object::new(ctx),
@@ -65,9 +101,18 @@ module sui_airbnb::property {
             address,
             is_available: true,
         };
+
+        let property_id = object::id(&property);
+        event::emit( PropertyCreated {
+            property_id,
+            owner: ctx.sender(),
+            price_per_day,
+            property_type,
+            num_rooms,
+        });
         
         // Transfer the property to the owner
-        transfer::transfer(property, tx_context::sender(ctx));
+        transfer::transfer(property, ctx.sender());
     }
     
 }
