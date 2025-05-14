@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "EventCursor" ALTER COLUMN "eventSeq" DROP NOT NULL,
+ALTER COLUMN "txDigest" DROP NOT NULL;
