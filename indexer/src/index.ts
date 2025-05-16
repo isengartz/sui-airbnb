@@ -6,6 +6,7 @@ import {
 } from "@mysten/sui/client";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
+import { fromBase64 } from "@mysten/sui/utils";
 import { PrismaClient } from "@prisma/client";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -133,8 +134,9 @@ app.post("/properties/mock", async (_req: Request, res: Response) => {
 				.status(500)
 				.json({ error: "SIGNER_PRIVATE_KEY environment variable is not set" });
 		}
-
-		const keypair = Ed25519Keypair.deriveKeypair(privateKeyBase64);
+		const secretKey = fromBase64(privateKeyBase64);
+		const actualSecretKey = secretKey.slice(1);
+		const keypair = Ed25519Keypair.fromSecretKey(actualSecretKey);
 
 		const tx = new Transaction();
 

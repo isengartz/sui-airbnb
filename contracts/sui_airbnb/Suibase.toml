@@ -1,0 +1,5 @@
+[meta]
+creation_timestamp = "1747366426576895 2025-05-16 06:33:46.576895 +03:00"
+
+[packages]
+sui_airbnb = { uuid = "G6CCVI2N34TFDHTRKKANRDQWF4", uuid_custom = false }
