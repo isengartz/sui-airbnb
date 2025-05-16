@@ -28,6 +28,20 @@ services:
       postgres:
         condition: service_healthy
 
+  # Backend service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Frontend application
   frontend:
     build:
@@ -43,7 +57,7 @@ services:
       - REACT_APP_SUI_RPC_URL=http://host.docker.internal:44340
       - REACT_APP_API_URL=http://localhost:4000
     depends_on:
-      - indexer
+      - backend
 
 volumes:
   postgres_data:
