@@ -10,14 +10,15 @@ import {
 } from "react";
 import authService, { type AuthState } from "../services/authService";
 
-// Default auth state
-const defaultAuthState: AuthState = {
+// ────────────────────────────────────────────────────────────────────────────
+
+const defaultState: AuthState = {
 	token: null,
 	user: null,
 	isAuthenticated: false,
 };
 
-const AuthContext = createContext<{
+interface AuthCtxValue {
 	authState: AuthState;
 	login: () => Promise<void>;
 	loginWithWallet: (
@@ -27,8 +28,10 @@ const AuthContext = createContext<{
 	logout: () => void;
 	isAdmin: () => boolean;
 	isAgent: () => boolean;
-}>({
-	authState: defaultAuthState,
+}
+
+const AuthContext = createContext<AuthCtxValue>({
+	authState: defaultState,
 	login: async () => {},
 	loginWithWallet: async () => {},
 	logout: () => {},
@@ -36,124 +39,97 @@ const AuthContext = createContext<{
 	isAgent: () => false,
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const currentAccount = useCurrentAccount();
 	const { mutate: signPersonalMessage } = useSignPersonalMessage();
+
 	const [authState, setAuthState] = useState<AuthState>({
-		token: null,
+		token: authService.getToken()
+			? // biome-ignore lint/style/noNonNullAssertion: <explanation>
+				{ token: authService.getToken()!, expiresAt: 0 }
+			: null,
 		user: authService.getUser(),
 		isAuthenticated: authService.isAuthenticated(),
 	});
 
-	// Update auth state when service changes
 	const updateAuthState = useCallback(() => {
 		setAuthState({
-			token: { token: authService.getToken() || "", expiresAt: 0 },
+			token: authService.getToken()
+				? // biome-ignore lint/style/noNonNullAssertion: <explanation>
+					{ token: authService.getToken()!, expiresAt: 0 }
+				: null,
 			user: authService.getUser(),
 			isAuthenticated: authService.isAuthenticated(),
 		});
 	}, []);
 
-	// Refresh token if needed
-	const refreshTokenIfNeeded = useCallback(async () => {
-		if (authService.needsRefresh()) {
-			const refreshed = await authService.refreshIfNeeded();
-			if (refreshed) {
-				updateAuthState();
-			}
-		}
+	/* initial load */
+	useEffect(() => {
+		updateAuthState();
 	}, [updateAuthState]);
 
-	// Check authentication status and refresh token when needed
+	/* periodic refresh check */
 	useEffect(() => {
-		// If user is authenticated, periodically check if token needs refresh
+		let id: number | undefined;
 		if (authService.isAuthenticated()) {
-			refreshTokenIfNeeded();
-
-			// Set up interval to check for token refresh (every 5 minutes)
-			const intervalId = setInterval(refreshTokenIfNeeded, 5 * 60 * 1000);
-
-			return () => clearInterval(intervalId);
+			authService.refreshIfNeeded().then(updateAuthState);
+			id = window.setInterval(
+				async () => {
+					const ok = await authService.refreshIfNeeded();
+					if (ok) updateAuthState();
+				},
+				5 * 60 * 1000,
+			);
 		}
-	}, [refreshTokenIfNeeded]);
+		return () => clearInterval(id);
+	}, [updateAuthState]);
 
-	// If wallet changes and we're authenticated, refresh auth state
 	useEffect(() => {
-		if (currentAccount && authService.isAuthenticated()) {
-			updateAuthState();
-		}
+		if (currentAccount && authService.isAuthenticated()) updateAuthState();
 	}, [currentAccount, updateAuthState]);
 
-	// Regular login for already connected wallets
-	const login = async () => {
-		if (!currentAccount) {
-			throw new Error("No wallet connected");
-		}
-
-		try {
-			console.log("Starting login process for:", currentAccount.address);
-			return await loginWithWallet(
-				currentAccount.address,
-				currentAccount.publicKey,
-			);
-		} catch (error) {
-			console.error("Login failed:", error);
-			throw error;
-		}
-	};
-
-	// Login with a specific wallet address
-	const loginWithWallet = async (
-		address: string,
-		publicKey: WalletAccount["publicKey"],
-	) => {
-		try {
-			console.log("Getting nonce for:", address);
+	const loginWithWallet = useCallback(
+		async (address: string, publicKey: WalletAccount["publicKey"]) => {
 			const nonce = await authService.getNonce(address);
-			console.log("Received nonce:", nonce);
-
 			const message = authService.constructChallengeMessage(address, nonce);
-			console.log("Challenge message created:", message);
-			console.log("Signing message:", message);
 
-			signPersonalMessage(
-				{
-					message: new TextEncoder().encode(message),
-				},
-				{
-					onSuccess: async (result) => {
-						console.log("Message signed successfully");
-						console.log("result", result);
+			await new Promise<void>((resolve, reject) => {
+				signPersonalMessage(
+					{ message: new TextEncoder().encode(message) },
+					{
+						onSuccess: async (result) => {
+							try {
+								await authService.login(message, result.signature, publicKey);
+								updateAuthState();
+								resolve();
+							} catch (err) {
+								reject(err);
+							}
+						},
+						onError: reject,
+					},
+				);
+			});
+		},
+		[signPersonalMessage, updateAuthState],
+	);
 
-						await authService.login(message, result.signature, publicKey);
-						updateAuthState();
-					},
-					onError: (error) => {
-						console.error("Signing failed:", error);
-						throw error;
-					},
-				},
-			);
-		} catch (error) {
-			console.error("Login process failed:", error);
-			throw error;
-		}
-	};
+	const login = useCallback(async () => {
+		if (!currentAccount) throw new Error("No wallet connected");
+		await loginWithWallet(currentAccount.address, currentAccount.publicKey);
+	}, [currentAccount, loginWithWallet]);
 
 	const logout = () => {
 		authService.logout();
 		updateAuthState();
 	};
 
-	const isAdmin = () => {
-		return authState.user?.role === "admin";
-	};
-
-	const isAgent = () => {
-		return authState.user?.role === "agent";
-	};
+	const isAdmin = () => authState.user?.role === "admin";
+	const isAgent = () => authState.user?.role === "agent";
 
 	return (
 		<AuthContext.Provider
