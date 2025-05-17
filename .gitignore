@@ -5,3 +5,4 @@ dist
 .DS_Store
 sui.log.*
 .vscode
+AUTHENTICATION_ARCHITECTURE.md
