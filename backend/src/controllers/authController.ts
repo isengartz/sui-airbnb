@@ -5,7 +5,9 @@ import jwt, { type Secret } from "jsonwebtoken";
 import { BadRequestError } from "../errors/badRequestError";
 import { RequestValidationError } from "../errors/requestValidationError";
 import { generateNonce } from "../utils/nonceUtils";
+import { redisClient } from "../utils/redisClient";
 import { verifyRoleFromBlockchain } from "../utils/roleUtils";
+
 // Load environment variables
 const JWT_SECRET: Secret = Buffer.from(
 	process.env.JWT_SECRET || "your-secret-key",
@@ -13,6 +15,8 @@ const JWT_SECRET: Secret = Buffer.from(
 );
 const JWT_EXPIRY = process.env.JWT_EXPIRY || "24h";
 const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
+const NONCE_EXPIRY_SECONDS = 5 * 60; // 5 minutes
+const ROLE_CACHE_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 
 interface AccessTokenPayload {
 	address: string;
@@ -25,43 +29,20 @@ interface RefreshTokenPayload {
 	tokenType: "refresh";
 }
 
-// @TODO: Use Redis or another distributed cache
-const userRoles: Record<string, string> = {
-	"0x1234567890123456789012345678901234567890123456789012345678901234": "admin",
-	"0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd": "agent",
-	"0x9876543210987654321098765432109876543210987654321098765432109876": "agent",
-};
-
-// @TODO: Use Redis or another distributed cache
-const nonceStore: Record<string, { nonce: string; expiry: number }> = {};
-
-// Clean up expired nonces periodically (every 15 minutes)
-setInterval(
-	() => {
-		const now = Date.now();
-		for (const address in nonceStore) {
-			if (nonceStore[address].expiry < now) {
-				delete nonceStore[address];
-			}
-		}
-	},
-	15 * 60 * 1000,
-);
-
 /**
  * Generate and return a nonce for authentication
  */
-export const getNonce = (req: Request, res: Response) => {
+export const getNonce = async (req: Request, res: Response) => {
 	const nonce = generateNonce();
-	const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
-
 	// Store nonce with address if provided
 	if (req.query.address) {
 		const address = req.query.address as string;
-		nonceStore[address] = { nonce, expiry };
+		await redisClient.set(`nonce:${address}`, nonce, {
+			EX: NONCE_EXPIRY_SECONDS,
+		});
 	}
 
-	res.json({ nonce, expiry });
+	res.json({ nonce, expiry: Date.now() + NONCE_EXPIRY_SECONDS * 1000 });
 };
 
 /**
@@ -93,12 +74,16 @@ export const login = async (
 		// Verify timestamp is recent (within 5 minutes)
 		const messageTime = new Date(timestamp).getTime();
 		const now = Date.now();
-		if (messageTime < now - 5 * 60 * 1000 || messageTime > now + 60 * 1000) {
+		if (
+			messageTime < now - NONCE_EXPIRY_SECONDS * 1000 ||
+			messageTime > now + 60 * 1000
+		) {
 			throw new BadRequestError("Message timestamp is invalid or expired");
 		}
 
 		// Verify nonce if we have one stored
-		if (nonceStore[address] && nonceStore[address].nonce !== nonce) {
+		const storedNonce = await redisClient.get(`nonce:${address}`);
+		if (storedNonce && storedNonce !== nonce) {
 			throw new BadRequestError("Invalid nonce");
 		}
 
@@ -121,23 +106,24 @@ export const login = async (
 		}
 
 		// Clean up used nonce
-		if (nonceStore[address]) {
-			delete nonceStore[address];
+		if (storedNonce) {
+			await redisClient.del(`nonce:${address}`);
 		}
 
 		// Get user role
-		let role = userRoles[address] || "user";
+		let role = await redisClient.get(`role:${address}`);
 
-		// Optionally verify role from blockchain (use cached value from userRoles if available)
-		if (!userRoles[address]) {
+		if (!role) {
+			role = "user"; // Default role
+			// Optionally verify role from blockchain
 			try {
-				// This function would check blockchain state for special objects/NFTs
-				// that determine role permissions
 				const blockchainRole = await verifyRoleFromBlockchain(address);
 				if (blockchainRole) {
 					role = blockchainRole;
-					// Cache the role
-					userRoles[address] = role;
+					// Cache the role in Redis
+					await redisClient.set(`role:${address}`, role, {
+						EX: ROLE_CACHE_EXPIRY_SECONDS,
+					});
 				}
 			} catch (error) {
 				console.error("Error verifying role from blockchain:", error);
@@ -207,7 +193,28 @@ export const refreshToken = async (
 		}
 
 		const address = decoded.address;
-		const role = userRoles[address] || "user";
+		let role = await redisClient.get(`role:${address}`);
+		if (!role) {
+			// If role not in cache, try to get it from blockchain
+			// This situation is less likely if login caches it, but as a fallback:
+			try {
+				const blockchainRole = await verifyRoleFromBlockchain(address);
+				if (blockchainRole) {
+					role = blockchainRole;
+					await redisClient.set(`role:${address}`, role, {
+						EX: ROLE_CACHE_EXPIRY_SECONDS,
+					});
+				} else {
+					role = "user"; // Default if not found on blockchain either
+				}
+			} catch (error) {
+				console.error(
+					"Error verifying role from blockchain during token refresh:",
+					error,
+				);
+				role = "user"; // Default on error
+			}
+		}
 
 		// Issue new access token
 		const newTokenPayload: AccessTokenPayload = {

@@ -34,6 +34,18 @@ services:
       postgres:
         condition: service_healthy
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Backend service
   backend:
     build:
@@ -45,6 +57,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - PORT=${BACKEND_SERVICE_PORT}
       - CORS_ORIGIN=${BACKEND_SERVICE_CORS_ORIGIN}
+      - REDIS_URL=redis://redis:${REDIS_PORT:-6379}
     ports:
       - "${BACKEND_SERVICE_PORT}:${BACKEND_SERVICE_PORT}"
     volumes:
@@ -52,6 +65,8 @@ services:
       - /app/node_modules
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # Frontend application
@@ -73,3 +88,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
