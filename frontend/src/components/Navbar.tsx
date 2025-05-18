@@ -4,6 +4,16 @@ import {
 	useDisconnectWallet,
 	useWallets,
 } from "@mysten/dapp-kit";
+import { ExitIcon, PersonIcon } from "@radix-ui/react-icons";
+import {
+	Avatar,
+	Box,
+	Button,
+	Dialog,
+	Flex,
+	Heading,
+	Text,
+} from "@radix-ui/themes";
 import type React from "react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
@@ -57,97 +67,113 @@ export const Navbar: React.FC = () => {
 		logout();
 	};
 
-	/* --------------------------------------------------------------------- */
-	return (
-		<nav className="">
-			<div className="container mx-auto flex justify-between items-center py-4">
-				<div className="text-xl font-bold">SUI Airbnb</div>
+	const formatAddress = (addr: string | undefined) => {
+		if (!addr) return "";
+		return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+	};
 
-				<div className="flex items-center space-x-2">
+	return (
+		<Box style={{ borderBottom: "1px solid var(--gray-a5)" }}>
+			<Flex
+				align="center"
+				justify="between"
+				py="4"
+				px={{ initial: "4", md: "6" }}
+				style={{ maxWidth: "1200px", margin: "0 auto" }}
+			>
+				<Heading size="6" weight="bold" color="cyan">
+					SUI Airbnb
+				</Heading>
+
+				<Flex align="center" gap="3">
 					{isConnected ? (
 						authState.isAuthenticated ? (
 							<>
-								<span className="text-sm text-gray-600">
+								<Text size="2" color="gray">
 									{authState.user?.role && `(${authState.user.role})`}
-								</span>
-								<span className="text-sm">
-									{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}
-								</span>
-								<button
-									type="button"
-									onClick={handleLogout}
-									className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm"
-								>
+								</Text>
+								<Button variant="outline" color="gray" highContrast>
+									<PersonIcon />
+									{formatAddress(walletAddress)}
+								</Button>
+								<Button onClick={handleLogout} color="red">
+									<ExitIcon />
 									Logout
-								</button>
+								</Button>
 							</>
 						) : (
 							<>
-								<span className="text-sm">
-									{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}
-								</span>
+								<Button variant="outline" color="gray" disabled highContrast>
+									{formatAddress(walletAddress)}
+								</Button>
 								{busy === "signing" ? (
-									<span className="text-sm italic">Signing in…</span>
+									<Text size="2" color="gray">
+										Signing in…
+									</Text>
 								) : (
-									<button
-										type="button"
+									<Button
 										onClick={() => disconnect()}
-										className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm"
+										color="red"
+										variant="soft"
 									>
-										Disconnect
-									</button>
+										<ExitIcon /> Disconnect
+									</Button>
 								)}
 							</>
 						)
 					) : (
-						<button
-							type="button"
+						<Button
 							onClick={() => setShowWalletModal(true)}
 							disabled={!!busy}
-							className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+							size="2"
+							variant="solid"
+							highContrast
 						>
-							{busy === "connecting" ? "Connecting…" : "Connect wallet"}
-						</button>
+							{busy === "connecting" ? "Connecting…" : "Connect Wallet"}
+						</Button>
 					)}
-				</div>
-			</div>
+				</Flex>
+			</Flex>
 
-			{/* Wallet picker */}
-			{showWalletModal && (
-				<div
-					className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-					aria-modal="true"
-				>
-					<div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-						<h2 className="text-xl font-bold mb-4">Select a wallet</h2>
+			<Dialog.Root open={showWalletModal} onOpenChange={setShowWalletModal}>
+				<Dialog.Content style={{ maxWidth: 450 }}>
+					<Dialog.Title>Select a Wallet</Dialog.Title>
+					<Dialog.Description size="2" mb="4">
+						Connect to SUI Airbnb using one of the available wallets.
+					</Dialog.Description>
 
-						<div className="space-y-2">
-							{wallets.map((w) => (
-								<button
-									type="button"
-									key={w.name}
-									onClick={() => handleWalletSelect(w)}
-									className="w-full p-3 text-left border rounded-lg hover:bg-gray-50 flex items-center space-x-3 disabled:opacity-50"
-									disabled={busy !== null}
-								>
-									{w.icon && (
-										<img src={w.icon} alt={w.name} className="w-6 h-6" />
-									)}
-									<span>{w.name}</span>
-								</button>
-							))}
-						</div>
+					<Flex direction="column" gap="3">
+						{wallets.map((w) => (
+							<Button
+								key={w.name}
+								onClick={() => handleWalletSelect(w)}
+								variant="surface"
+								size="3"
+								disabled={busy !== null}
+								style={{ justifyContent: "flex-start", cursor: "pointer" }}
+							>
+								{w.icon && (
+									<Avatar
+										src={w.icon}
+										fallback={w.name.charAt(0)}
+										size="1"
+										mr="2"
+									/>
+								)}
+								<Text>{w.name}</Text>
+							</Button>
+						))}
+					</Flex>
 
-						<button
-							type="button"
-							onClick={() => setShowWalletModal(false)}
-							className="mt-4 w-full p-2 text-gray-500 hover:text-gray-700"
-						>
-							Cancel
-						</button>
-					</div>
-				</div>
-			)}
-		</nav>
+					<Flex gap="3" mt="4" justify="end">
+						<Dialog.Close>
+							<Button variant="soft" color="gray" style={{ cursor: "pointer" }}>
+								Cancel
+							</Button>
+						</Dialog.Close>
+					</Flex>
+				</Dialog.Content>
+			</Dialog.Root>
+		</Box>
 	);
 };
