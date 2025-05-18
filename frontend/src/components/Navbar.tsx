@@ -59,7 +59,7 @@ export const Navbar: React.FC = () => {
 
 	/* --------------------------------------------------------------------- */
 	return (
-		<nav className="bg-white shadow-lg">
+		<nav className="">
 			<div className="container mx-auto flex justify-between items-center py-4">
 				<div className="text-xl font-bold">SUI Airbnb</div>
 

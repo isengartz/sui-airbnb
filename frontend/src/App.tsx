@@ -6,6 +6,7 @@ import {
 import { getFullnodeUrl } from "@mysten/sui/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
+import "./App.css";
 import Home from "./Home";
 import { AuthProvider } from "./contexts/AuthContext";
 
