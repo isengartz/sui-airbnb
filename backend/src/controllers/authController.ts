@@ -4,6 +4,7 @@ import { validationResult } from "express-validator";
 import jwt, { type Secret } from "jsonwebtoken";
 import { BadRequestError } from "../errors/badRequestError";
 import { RequestValidationError } from "../errors/requestValidationError";
+import { logger } from "../utils/loggerInstance";
 import { generateNonce } from "../utils/nonceUtils";
 import { redisClient } from "../utils/redisClient";
 import { verifyRoleFromBlockchain } from "../utils/roleUtils";
@@ -53,10 +54,10 @@ export const login = async (
 	res: Response,
 	next: NextFunction,
 ) => {
-	console.log("login", req.body);
 	const errors = validationResult(req);
-	console.log("errors", errors);
+
 	if (!errors.isEmpty()) {
+		logger.error("Validation errors", { errors: errors.array() });
 		throw new RequestValidationError(errors.array());
 	}
 
@@ -87,10 +88,6 @@ export const login = async (
 			throw new BadRequestError("Invalid nonce");
 		}
 
-		console.log("message", message);
-		console.log("signature", signature);
-		console.log("publicKey", publicKey);
-
 		// Verify signature
 		const originalMessageBytes = new TextEncoder().encode(message);
 
@@ -110,7 +107,6 @@ export const login = async (
 			await redisClient.del(`nonce:${address}`);
 		}
 
-		// Get user role
 		let role = await redisClient.get(`role:${address}`);
 
 		if (!role) {
@@ -126,7 +122,10 @@ export const login = async (
 					});
 				}
 			} catch (error) {
-				console.error("Error verifying role from blockchain:", error);
+				logger.error("Error verifying role from blockchain during login", {
+					address,
+					error,
+				});
 			}
 		}
 
@@ -208,9 +207,9 @@ export const refreshToken = async (
 					role = "user"; // Default if not found on blockchain either
 				}
 			} catch (error) {
-				console.error(
-					"Error verifying role from blockchain during token refresh:",
-					error,
+				logger.error(
+					"Error verifying role from blockchain during token refresh",
+					{ address, error },
 				);
 				role = "user"; // Default on error
 			}

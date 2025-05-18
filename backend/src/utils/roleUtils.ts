@@ -1,4 +1,5 @@
 import { SuiClient } from "@mysten/sui/client";
+import { logger } from "./loggerInstance";
 import { redisClient } from "./redisClient";
 
 const SUI_RPC_URL =
@@ -53,7 +54,7 @@ export const verifyRoleFromBlockchain = async (
 		await cacheRoleInRedis(address, "user");
 		return "user";
 	} catch (error) {
-		console.error(`Error verifying role for ${address}:`, error);
+		logger.error(`Error verifying role for ${address}:`, error);
 		return null;
 	}
 };
