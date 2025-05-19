@@ -34,6 +34,7 @@ interface RefreshTokenPayload {
  * Generate and return a nonce for authentication
  */
 export const getNonce = async (req: Request, res: Response) => {
+	logger.info("Generating nonce");
 	const nonce = generateNonce();
 	// Store nonce with address if provided
 	if (req.query.address) {

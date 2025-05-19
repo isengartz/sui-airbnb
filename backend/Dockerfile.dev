@@ -2,12 +2,25 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm
 
-RUN npm install
 
-COPY . .
+# Copy workspace and lock files from monorepo root
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+
+
+# Copy service-specific package.json
+COPY backend/package.json ./
+
+
+# Install dependencies for this service only
+# Ensure the package name "backend" matches your backend/package.json
+RUN pnpm install --no-frozen-lockfile --filter backend
+
+# Copy the rest of the service's code from its directory in the monorepo
+COPY backend/. .
 
 EXPOSE 5001
 
-CMD ["npm", "run", "dev"] 
+CMD ["pnpm", "dev"] 

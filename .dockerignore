@@ -1,0 +1,38 @@
+# Ignore Git directory
+.git
+.gitignore
+
+# Ignore Node.js dependencies
+**/node_modules
+npm-debug.log
+pnpm-debug.log
+yarn-error.log
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE and editor files
+.idea
+.vscode
+*.swp
+*~
+
+# Ignore build outputs (if any at the root or not handled by service-specific ignores)
+**/dist
+**/build
+
+# Log files
+*.log
+logs
+*.log.*.[0-9]
+
+# Environment files
+.env
+.env.*
+!/.env.example
+!/.env.sample
+
+# Docker
+Dockerfile
+docker-compose.yml 

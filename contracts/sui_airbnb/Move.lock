@@ -34,7 +34,13 @@ latest-published-id = "0xcfc246abaf40e2f9589e7907e41abe80f150d48b9dc8d6e78c00d1c
 published-version = "1"
 
 [env.localnet_proxy]
-chain-id = "7e57e0bf"
-original-published-id = "0xf526b6748d5863a729262b0aa47788a71345244706f1d79eedd7cfb8c2d32e48"
-latest-published-id = "0xf526b6748d5863a729262b0aa47788a71345244706f1d79eedd7cfb8c2d32e48"
+chain-id = "dd86b3ea"
+original-published-id = "0x865bd893ff76db86c0ccd6891a7aebee607c6f6f01edc1c3cf022c20a98bc59a"
+latest-published-id = "0x865bd893ff76db86c0ccd6891a7aebee607c6f6f01edc1c3cf022c20a98bc59a"
+published-version = "1"
+
+[env.localnet]
+chain-id = "49cedf36"
+original-published-id = "0x4629df2f73ab2dd3b5cdcc24b8e0a885daaed477e3d29b2e7376ba67476fd69d"
+latest-published-id = "0x4629df2f73ab2dd3b5cdcc24b8e0a885daaed477e3d29b2e7376ba67476fd69d"
 published-version = "1"

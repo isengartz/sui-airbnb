@@ -8,19 +8,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig*.json ./
+# Install pnpm
+RUN npm install -g pnpm
 
-RUN npm install
+# Copy workspace and lock files from monorepo root
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-COPY . .
+# Copy service-specific package.json
+COPY indexer/package.json ./
+
+# Install dependencies for this service only
+# Ensure the package name "sui-airbnb-indexer" matches your indexer/package.json
+RUN pnpm install --no-frozen-lockfile --filter indexer
+
+# Copy the rest of the service's code from its directory in the monorepo
+# This will copy indexer/tsconfig.json to /app/tsconfig.json and indexer/start.sh to /app/start.sh
+COPY indexer/. .
 
 RUN mkdir -p dist
-
 RUN chmod +x start.sh
 
 EXPOSE 4000
 
-CMD ["/bin/sh", "start.sh"]
+CMD ["/bin/sh", "./start.sh"]
 

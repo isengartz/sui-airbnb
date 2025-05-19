@@ -17,8 +17,8 @@ services:
 
   indexer:
     build:
-      context: ./indexer
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: indexer/Dockerfile.dev
     environment:
       - PORT=${INDEXER_SERVICE_PORT}
       - NODE_ENV=${NODE_ENV}
@@ -49,8 +49,8 @@ services:
   # Backend service
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: backend/Dockerfile.dev
     environment:
       - NODE_ENV=${NODE_ENV}
       - SUI_RPC_URL=${SUI_RPC_URL}
@@ -72,8 +72,8 @@ services:
   # Frontend application
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     ports:
       - "${FRONTEND_SERVICE_PORT}:${FRONTEND_SERVICE_PORT}"
     volumes:

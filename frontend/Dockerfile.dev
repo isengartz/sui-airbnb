@@ -2,16 +2,24 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY package.json package-lock.json* ./
+# Install pnpm
+RUN npm install -g pnpm
 
-RUN npm ci
+# Copy workspace and lock files from monorepo root
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Copy the rest of the code
-COPY . .
+# Copy service-specific package.json
+COPY frontend/package.json ./
+
+# Install dependencies for this service only
+# Ensure the package name "frontend-new" matches your frontend/package.json
+RUN pnpm install --no-frozen-lockfile --filter frontend
+
+# Copy the rest of the service's code from its directory in the monorepo
+COPY frontend/. .
 
 # Expose the port the app will run on
 EXPOSE 5173
 
 # Start the application in development mode
-CMD ["npm", "start"]
+CMD ["pnpm", "dev"]
