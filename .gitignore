@@ -6,3 +6,4 @@ dist
 sui.log.*
 .vscode
 AUTHENTICATION_ARCHITECTURE.md
+node_modules

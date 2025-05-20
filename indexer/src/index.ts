@@ -26,6 +26,7 @@ const pollingInterval = Number.parseInt(
 	10,
 );
 const batchSize = Number.parseInt(process.env.BATCH_SIZE || "50", 10); // 50 events per batch default
+
 const suiClient = new SuiClient({ url: rpcUrl });
 
 // Initialize event indexer
@@ -38,6 +39,12 @@ const eventIndexer = new EventIndexer({
 });
 
 eventIndexer.registerProcessor(createPropertyProcessor(packageId));
+
+// Handle errors from the indexer to prevent unhandled rejections
+eventIndexer.on("error", (errorContext) => {
+	console.error("EventIndexer emitted an error:", errorContext);
+	// Decide if you need to do more here, like attempting a restart or specific cleanup
+});
 
 // Middleware
 app.use(cors());
@@ -88,13 +95,17 @@ app.get("/health", async (_req: Request, res: Response) => {
 				params: [],
 			}),
 		});
-
+		const systemState = await suiClient.getLatestSuiSystemState();
+		console.log("systemState", systemState);
 		const data = await response.json();
 		res.json({
 			status: "ok",
 			database: "connected",
 			nodeVersion: process.version,
 			chainIdentifier: data.result,
+			rpcUrl,
+			packageId: process.env.PACKAGE_ID || "not set",
+			epoch: systemState.epoch,
 		});
 	} catch (error) {
 		console.error("Health check failed:", error);

@@ -119,8 +119,11 @@ export class EventIndexer extends EventEmitter {
 				where: { id: eventType },
 			});
 
+			const cursorMessage = cursorRecord
+				? `${cursorRecord.txDigest} - ${cursorRecord.eventSeq}`
+				: "No cursor found";
 			console.log(
-				`Processing events for ${eventType}, cursor: ${cursorRecord?.txDigest} ${cursorRecord?.eventSeq}`,
+				`Processing events for ${eventType}, cursor: ${cursorMessage}`,
 			);
 
 			const cursor = cursorRecord
@@ -128,8 +131,8 @@ export class EventIndexer extends EventEmitter {
 						txDigest: cursorRecord.txDigest,
 						eventSeq: cursorRecord.eventSeq,
 					}
-				: undefined;
-
+				: null;
+			console.log("Cursor:", cursor);
 			// Query events from SUI
 			const events = await retry(
 				async () => {

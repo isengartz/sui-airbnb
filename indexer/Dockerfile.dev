@@ -19,7 +19,7 @@ COPY indexer/package.json ./
 
 # Install dependencies for this service only
 # Ensure the package name "sui-airbnb-indexer" matches your indexer/package.json
-RUN pnpm install --no-frozen-lockfile --filter indexer
+RUN pnpm install --no-frozen-lockfile --filter sui-airbnb-indexer
 
 # Copy the rest of the service's code from its directory in the monorepo
 # This will copy indexer/tsconfig.json to /app/tsconfig.json and indexer/start.sh to /app/start.sh
